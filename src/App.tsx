@@ -1,15 +1,20 @@
 import { useMemo, useState } from 'react';
-import { LogOut, Moon, RefreshCcw, Sun, WalletCards, Landmark, TrendingDown, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ClipboardList, LayoutDashboard, LogOut, Moon, RefreshCcw, Sun, WalletCards, Landmark, TrendingDown } from 'lucide-react';
 import { AddEditLoanModal } from './components/AddEditLoanModal';
 import { AuthPanel } from './components/AuthPanel';
+import { CollectionHarassmentLog } from './components/CollectionHarassmentLog';
 import { CreditCardPlanner } from './components/CreditCardPlanner';
 import { DashboardCard } from './components/DashboardCard';
 import { DashboardCharts } from './components/Charts';
+import { EmergencyDecisionAssistant } from './components/EmergencyDecisionAssistant';
+import { ExtensionNegotiationTracker } from './components/ExtensionNegotiationTracker';
 import { InsightCard } from './components/InsightCard';
 import { LoanTable } from './components/LoanTable';
 import { PaymentCalendar } from './components/PaymentCalendar';
+import { PriorityPaymentEngine } from './components/PriorityPaymentEngine';
 import { RecoveryPlanner } from './components/RecoveryPlanner';
 import { StatusBadge } from './components/StatusBadge';
+import { SurvivalCashPlanner } from './components/SurvivalCashPlanner';
 import { sampleState } from './data/sampleData';
 import { useSupabaseAppState } from './hooks/useSupabaseAppState';
 import type { AppState, Loan, LoanStatus } from './types';
@@ -28,6 +33,7 @@ export function App() {
   const { state, setState, user, loading, saving, error, signIn, signUp, signOut } = useSupabaseAppState();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'decisions' | 'loans' | 'planning' | 'records'>('overview');
 
   const totals = useMemo(() => {
     const monthlyEmi = getTotalMonthlyEmi(state.loans);
@@ -81,6 +87,14 @@ export function App() {
     return <AuthPanel error={error} onSignIn={signIn} onSignUp={signUp} />;
   }
 
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview', icon: LayoutDashboard },
+    { id: 'decisions' as const, label: 'Decisions', icon: AlertTriangle },
+    { id: 'loans' as const, label: 'Loans', icon: WalletCards },
+    { id: 'planning' as const, label: 'Planning', icon: TrendingDown },
+    { id: 'records' as const, label: 'Records', icon: ClipboardList },
+  ];
+
   return (
     <main className={state.darkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
@@ -117,53 +131,98 @@ export function App() {
             </div>
           ) : null}
 
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <DashboardCard title="Total Monthly EMI" value={formatCurrency(totals.monthlyEmi)} subtitle={`${totals.remainingEmis} EMIs remaining across active loans`} icon={<WalletCards size={20} />} tone="blue" />
-            <DashboardCard title="July Salary" value={formatCurrency(state.julySalary)} subtitle={`August onward salary: ${formatCurrency(state.regularSalary)}`} icon={<Landmark size={20} />} tone="green" />
-            <DashboardCard title="Total Monthly Obligation" value={formatCurrency(totals.julyObligation)} subtitle={`Includes rent, friends debt, loans, and card minimum`} icon={<TrendingDown size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
-            <DashboardCard title="Salary Gap" value={formatCurrency(totals.gap)} subtitle="July salary minus total obligation" icon={<AlertTriangle size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
-          </section>
+          <nav className="sticky top-0 z-30 -mx-4 border-y border-slate-200 bg-slate-50/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:-mx-6 sm:px-6">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const selected = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${selected ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'}`}
+                  >
+                    <Icon size={16} /> {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="panel p-4">
-              <p className="label">Debt pressure</p>
-              <div className="mt-2 flex items-center gap-2">
-                <StatusBadge label={totals.pressure} />
-                <span className="text-sm text-slate-500 dark:text-slate-400">{totals.pressure === 'Critical' ? 'Immediate action needed' : totals.pressure === 'High' ? 'Shortfall risk' : 'Track closely'}</span>
+          {activeTab === 'overview' ? (
+            <>
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <DashboardCard title="Total Monthly EMI" value={formatCurrency(totals.monthlyEmi)} subtitle={`${totals.remainingEmis} EMIs remaining across active loans`} icon={<WalletCards size={20} />} tone="blue" />
+                <DashboardCard title="July Salary" value={formatCurrency(state.julySalary)} subtitle={`August onward salary: ${formatCurrency(state.regularSalary)}`} icon={<Landmark size={20} />} tone="green" />
+                <DashboardCard title="Total Monthly Obligation" value={formatCurrency(totals.julyObligation)} subtitle={`Includes rent, friends debt, loans, and card minimum`} icon={<TrendingDown size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
+                <DashboardCard title="Salary Gap" value={formatCurrency(totals.gap)} subtitle="July salary minus total obligation" icon={<AlertTriangle size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
+              </section>
+
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="panel p-4">
+                  <p className="label">Debt pressure</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <StatusBadge label={totals.pressure} />
+                    <span className="text-sm text-slate-500 dark:text-slate-400">{totals.pressure === 'Critical' ? 'Immediate action needed' : totals.pressure === 'High' ? 'Shortfall risk' : 'Track closely'}</span>
+                  </div>
+                </div>
+                <DashboardCard title="Rent" value={formatCurrency(state.rent)} subtitle="Monthly fixed cost" tone="slate" />
+                <DashboardCard title="Friends Debt" value={formatCurrency(state.friendsDebt)} subtitle="Planned repayment in projection" tone="orange" />
+                <DashboardCard title="Remaining Payable" value={formatCurrency(totals.remainingPayable)} subtitle="Active loans only" tone="blue" />
+              </section>
+
+              <section>
+                <h2 className="mb-3 text-lg font-bold text-slate-950 dark:text-white">Insights</h2>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                  {totals.insights.map((insight) => <InsightCard key={insight.title} {...insight} />)}
+                </div>
+              </section>
+            </>
+          ) : null}
+
+          {activeTab === 'decisions' ? (
+            <>
+              <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+                <SurvivalCashPlanner state={state} onChange={(survivalPlan) => setState({ ...state, survivalPlan })} />
+                <PriorityPaymentEngine state={state} />
               </div>
-            </div>
-            <DashboardCard title="Rent" value={formatCurrency(state.rent)} subtitle="Monthly fixed cost" tone="slate" />
-            <DashboardCard title="Friends Debt" value={formatCurrency(state.friendsDebt)} subtitle="Planned repayment in projection" tone="orange" />
-            <DashboardCard title="Remaining Payable" value={formatCurrency(totals.remainingPayable)} subtitle="Active loans only" tone="blue" />
-          </section>
+              <EmergencyDecisionAssistant state={state} onChange={(emergencyPlan) => setState({ ...state, emergencyPlan })} />
+            </>
+          ) : null}
 
-          <LoanTable
-            loans={state.loans}
-            onAdd={openAddModal}
-            onEdit={openEditModal}
-            onDelete={(id) => setState({ ...state, loans: state.loans.filter((loan) => loan.id !== id), paidLoanIds: state.paidLoanIds.filter((loanId) => loanId !== id) })}
-            onStatusChange={updateLoanStatus}
-          />
+          {activeTab === 'loans' ? (
+            <>
+              <LoanTable
+                loans={state.loans}
+                onAdd={openAddModal}
+                onEdit={openEditModal}
+                onDelete={(id) => setState({ ...state, loans: state.loans.filter((loan) => loan.id !== id), paidLoanIds: state.paidLoanIds.filter((loanId) => loanId !== id) })}
+                onStatusChange={updateLoanStatus}
+              />
+              <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                <PaymentCalendar
+                  state={state}
+                  onToggleLoanPaid={(id) => updateLoanStatus(id, state.paidLoanIds.includes(id) ? 'Pending' : 'Paid')}
+                  onToggleCardPaid={() => setState({ ...state, creditCard: { ...state.creditCard, paid: !state.creditCard.paid } })}
+                />
+                <CreditCardPlanner card={state.creditCard} onChange={(creditCard) => setState({ ...state, creditCard })} />
+              </div>
+            </>
+          ) : null}
 
-          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-            <PaymentCalendar
-              state={state}
-              onToggleLoanPaid={(id) => updateLoanStatus(id, state.paidLoanIds.includes(id) ? 'Pending' : 'Paid')}
-              onToggleCardPaid={() => setState({ ...state, creditCard: { ...state.creditCard, paid: !state.creditCard.paid } })}
-            />
-            <CreditCardPlanner card={state.creditCard} onChange={(creditCard) => setState({ ...state, creditCard })} />
-          </div>
+          {activeTab === 'planning' ? (
+            <>
+              <RecoveryPlanner projection={totals.projection} />
+              <DashboardCharts loans={state.loans} projection={totals.projection} state={state} />
+            </>
+          ) : null}
 
-          <RecoveryPlanner projection={totals.projection} />
-
-          <section>
-            <h2 className="mb-3 text-lg font-bold text-slate-950 dark:text-white">Insights</h2>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              {totals.insights.map((insight) => <InsightCard key={insight.title} {...insight} />)}
-            </div>
-          </section>
-
-          <DashboardCharts loans={state.loans} projection={totals.projection} state={state} />
+          {activeTab === 'records' ? (
+            <>
+              <ExtensionNegotiationTracker state={state} onChange={(negotiations) => setState({ ...state, negotiations })} />
+              <CollectionHarassmentLog logs={state.collectionLogs} onChange={(collectionLogs) => setState({ ...state, collectionLogs })} />
+            </>
+          ) : null}
         </div>
 
         <AddEditLoanModal loan={selectedLoan} open={modalOpen} onClose={() => setModalOpen(false)} onSave={updateLoan} />

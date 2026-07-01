@@ -11,6 +11,11 @@ Responsive personal debt management app built with React, TypeScript, Vite, Tail
 - Month-by-month recovery projection from July 2026
 - Insight cards and dependency-free charts
 - Supabase Auth and hosted database persistence
+- Survival cash planner with safe-to-pay calculation
+- Priority payment engine ranked by due date, short tenure, and risk
+- Emergency decision assistant for "I only have ₹X" situations
+- Extension and negotiation tracker per lender
+- Collection / harassment log for calls, evidence references, and complaint status
 - Reset sample data button
 
 ## Free Live Database Setup

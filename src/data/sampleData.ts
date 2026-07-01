@@ -31,4 +31,30 @@ export const sampleState: AppState = {
   regularSalary: 60000,
   paidLoanIds: [],
   darkMode: false,
+  survivalPlan: {
+    currentBankBalance: 0,
+    expectedSalaryDate: '2026-07-31',
+    foodBuffer: 6000,
+    transportBuffer: 2500,
+    emergencyBuffer: 3000,
+  },
+  emergencyPlan: {
+    cashAvailable: 0,
+    daysUntilSalary: 7,
+    cashBuffer: 3000,
+  },
+  negotiations: [],
+  collectionLogs: [],
 };
+
+export const withDefaultAppState = (state: Partial<AppState> | null | undefined): AppState => ({
+  ...sampleState,
+  ...state,
+  creditCard: { ...sampleState.creditCard, ...state?.creditCard },
+  survivalPlan: { ...sampleState.survivalPlan, ...state?.survivalPlan },
+  emergencyPlan: { ...sampleState.emergencyPlan, ...state?.emergencyPlan },
+  loans: state?.loans ?? sampleState.loans,
+  paidLoanIds: state?.paidLoanIds ?? [],
+  negotiations: state?.negotiations ?? [],
+  collectionLogs: state?.collectionLogs ?? [],
+});

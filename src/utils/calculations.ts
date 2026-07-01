@@ -1,4 +1,4 @@
-import type { AppState, Loan, MonthProjection, PaymentItem, Priority } from '../types';
+import type { AppState, Loan, MonthProjection, PaymentItem, Priority, PriorityPayment } from '../types';
 import { formatMonth, getJuly2026Date } from './format';
 
 const paidStatuses = new Set(['Paid']);
@@ -74,6 +74,110 @@ export const getDueState = (day: number, today = new Date()) => {
   if (diffDays < 0) return 'overdue';
   if (diffDays <= 3) return 'soon';
   return 'later';
+};
+
+export const getDaysUntilJulyDue = (day: number, today = new Date()) => {
+  const dueDate = getJuly2026Date(day);
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.ceil((dueDate.getTime() - start.getTime()) / 86_400_000);
+};
+
+export const getPriorityPayments = (state: AppState, today = new Date()): PriorityPayment[] =>
+  getActiveLoans(state.loans)
+    .filter((loan) => !state.paidLoanIds.includes(loan.id))
+    .map((loan) => {
+      const daysUntilDue = getDaysUntilJulyDue(loan.dueDay, today);
+      const reasons: string[] = [];
+      let score = 0;
+
+      if (daysUntilDue < 0) {
+        score += 80;
+        reasons.push('Overdue');
+      } else if (daysUntilDue <= 3) {
+        score += 60;
+        reasons.push('Due within 3 days');
+      } else if (daysUntilDue <= 7) {
+        score += 35;
+        reasons.push('Due this week');
+      }
+
+      if (loan.emisLeft <= 1) {
+        score += 45;
+        reasons.push('This payment closes the loan');
+      } else if (loan.emisLeft <= 2) {
+        score += 30;
+        reasons.push('Only 2 EMIs left');
+      } else if (loan.emisLeft <= 5) {
+        score += 15;
+        reasons.push('Short remaining tenure');
+      }
+
+      if (loan.priority === 'Critical') {
+        score += 30;
+        reasons.push('Marked critical');
+      } else if (loan.priority === 'High') {
+        score += 18;
+        reasons.push('Marked high priority');
+      }
+
+      if (loan.status === 'Extended') {
+        score -= 15;
+        reasons.push('Extension already marked');
+      }
+
+      return {
+        id: loan.id,
+        name: loan.name,
+        amount: loan.emi,
+        dueDay: loan.dueDay,
+        score,
+        reasons: reasons.length ? reasons : ['Lower immediate risk'],
+        closesLoan: loan.emisLeft === 1,
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.dueDay - b.dueDay || b.amount - a.amount);
+
+export const getSurvivalSummary = (state: AppState, today = new Date()) => {
+  const priorityPayments = getPriorityPayments(state, today);
+  const mustPayThisWeek = priorityPayments
+    .filter((payment) => getDaysUntilJulyDue(payment.dueDay, today) <= 7)
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const requiredBuffer =
+    state.survivalPlan.foodBuffer +
+    state.survivalPlan.transportBuffer +
+    state.survivalPlan.emergencyBuffer;
+  const safeToPay = Math.max(0, state.survivalPlan.currentBankBalance - requiredBuffer);
+
+  return {
+    mustPayThisWeek,
+    requiredBuffer,
+    safeToPay,
+    gap: safeToPay - mustPayThisWeek,
+  };
+};
+
+export const getEmergencyPlan = (state: AppState) => {
+  const spendable = Math.max(0, state.emergencyPlan.cashAvailable - state.emergencyPlan.cashBuffer);
+  const priorityPayments = getPriorityPayments(state);
+  const selected: PriorityPayment[] = [];
+  const deferred: PriorityPayment[] = [];
+  let remaining = spendable;
+
+  priorityPayments.forEach((payment) => {
+    if (payment.amount <= remaining) {
+      selected.push(payment);
+      remaining -= payment.amount;
+    } else {
+      deferred.push(payment);
+    }
+  });
+
+  return {
+    spendable,
+    selected,
+    deferred,
+    remainingCash: state.emergencyPlan.cashAvailable - selected.reduce((sum, payment) => sum + payment.amount, 0),
+  };
 };
 
 export const getRecoveryProjection = (state: AppState, months = 12): MonthProjection[] => {

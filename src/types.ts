@@ -31,6 +31,10 @@ export interface AppState {
   regularSalary: number;
   paidLoanIds: string[];
   darkMode: boolean;
+  survivalPlan: SurvivalPlan;
+  emergencyPlan: EmergencyPlanInput;
+  negotiations: NegotiationRecord[];
+  collectionLogs: CollectionLog[];
 }
 
 export interface MonthProjection {
@@ -56,4 +60,51 @@ export interface PaymentItem {
   dueDay: number;
   status: LoanStatus;
   paid: boolean;
+}
+
+export interface SurvivalPlan {
+  currentBankBalance: number;
+  expectedSalaryDate: string;
+  foodBuffer: number;
+  transportBuffer: number;
+  emergencyBuffer: number;
+}
+
+export interface EmergencyPlanInput {
+  cashAvailable: number;
+  daysUntilSalary: number;
+  cashBuffer: number;
+}
+
+export interface NegotiationRecord {
+  loanId: string;
+  contact: string;
+  requested: boolean;
+  approved: boolean;
+  newDueDate: string;
+  penaltyAmount: number;
+  promiseToPayDate: string;
+  notes: string;
+}
+
+export type CollectionLogStatus = 'Open' | 'Reported' | 'Resolved';
+
+export interface CollectionLog {
+  id: string;
+  dateTime: string;
+  lender: string;
+  callerNumber: string;
+  summary: string;
+  evidenceRef: string;
+  status: CollectionLogStatus;
+}
+
+export interface PriorityPayment {
+  id: string;
+  name: string;
+  amount: number;
+  dueDay: number;
+  score: number;
+  reasons: string[];
+  closesLoan: boolean;
 }

@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js';
 import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
-import { sampleState } from '../data/sampleData';
+import { sampleState, withDefaultAppState } from '../data/sampleData';
 import { supabase } from '../lib/supabase';
 import type { AppState } from '../types';
 
@@ -43,14 +43,14 @@ export function useSupabaseAppState(): RemoteStateResult {
     }
 
     if (data?.data) {
-      setState(data.data as AppState);
+      setState(withDefaultAppState(data.data as Partial<AppState>));
     } else {
       const { error: insertError } = await supabase
         .from('app_states')
-        .insert({ user_id: currentUser.id, data: sampleState });
+        .insert({ user_id: currentUser.id, data: withDefaultAppState(sampleState) });
 
       if (insertError) setError(insertError.message);
-      setState(sampleState);
+      setState(withDefaultAppState(sampleState));
     }
 
     loadedUserId.current = currentUser.id;
@@ -81,7 +81,7 @@ export function useSupabaseAppState(): RemoteStateResult {
       if (currentUser) {
         void loadState(currentUser);
       } else {
-        setState(sampleState);
+        setState(withDefaultAppState(sampleState));
         setLoading(false);
       }
     });
