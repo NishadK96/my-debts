@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Moon, RefreshCcw, Sun, WalletCards, Landmark, TrendingDown, AlertTriangle } from 'lucide-react';
+import { LogOut, Moon, RefreshCcw, Sun, WalletCards, Landmark, TrendingDown, AlertTriangle } from 'lucide-react';
 import { AddEditLoanModal } from './components/AddEditLoanModal';
+import { AuthPanel } from './components/AuthPanel';
 import { CreditCardPlanner } from './components/CreditCardPlanner';
 import { DashboardCard } from './components/DashboardCard';
 import { DashboardCharts } from './components/Charts';
@@ -10,7 +11,7 @@ import { PaymentCalendar } from './components/PaymentCalendar';
 import { RecoveryPlanner } from './components/RecoveryPlanner';
 import { StatusBadge } from './components/StatusBadge';
 import { sampleState } from './data/sampleData';
-import { useLocalStorage } from './hooks/useLocalStorage';
+import { useSupabaseAppState } from './hooks/useSupabaseAppState';
 import type { AppState, Loan, LoanStatus } from './types';
 import {
   getDebtPressure,
@@ -23,10 +24,8 @@ import {
 } from './utils/calculations';
 import { formatCurrency } from './utils/format';
 
-const storageKey = 'personal-debt-dashboard-v1';
-
 export function App() {
-  const [state, setState] = useLocalStorage<AppState>(storageKey, sampleState);
+  const { state, setState, user, loading, saving, error, signIn, signUp, signOut } = useSupabaseAppState();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
 
@@ -78,6 +77,10 @@ export function App() {
 
   const toggleDarkMode = () => setState({ ...state, darkMode: !state.darkMode });
 
+  if (!user) {
+    return <AuthPanel error={error} onSignIn={signIn} onSignUp={signUp} />;
+  }
+
   return (
     <main className={state.darkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
@@ -91,17 +94,29 @@ export function App() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <div className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                {loading ? 'Loading live data' : saving ? 'Saving live data' : 'Live data saved'}
+              </div>
               <button onClick={toggleDarkMode} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
                 {state.darkMode ? <Sun size={16} /> : <Moon size={16} />} {state.darkMode ? 'Light' : 'Dark'}
               </button>
               <button onClick={resetSampleData} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
                 <RefreshCcw size={16} /> Reset sample data
               </button>
+              <button onClick={() => void signOut()} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
+                <LogOut size={16} /> Sign out
+              </button>
             </div>
           </div>
         </header>
 
         <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+          {error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+              {error}
+            </div>
+          ) : null}
+
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <DashboardCard title="Total Monthly EMI" value={formatCurrency(totals.monthlyEmi)} subtitle={`${totals.remainingEmis} EMIs remaining across active loans`} icon={<WalletCards size={20} />} tone="blue" />
             <DashboardCard title="July Salary" value={formatCurrency(state.julySalary)} subtitle={`August onward salary: ${formatCurrency(state.regularSalary)}`} icon={<Landmark size={20} />} tone="green" />
