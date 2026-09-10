@@ -17,6 +17,7 @@ const emptyLoan: Loan = {
   name: '',
   emi: 0,
   dueDay: 1,
+  dueDate: '',
   emisLeft: 1,
   priority: 'Medium',
   status: 'Pending',
@@ -64,6 +65,10 @@ export function AddEditLoanModal({ loan, open, onClose, onSave }: AddEditLoanMod
           <label>
             <span className="label">Due day</span>
             <input className="field mt-1" required min={1} max={31} type="number" value={draft.dueDay} onChange={(e) => setDraft({ ...draft, dueDay: Number(e.target.value) })} />
+          </label>
+          <label>
+            <span className="label">Next due date</span>
+            <input className="field mt-1" type="date" value={draft.dueDate ?? ''} onChange={(e) => setDraft({ ...draft, dueDate: e.target.value, dueDay: e.target.value ? Number(e.target.value.slice(-2)) : draft.dueDay })} />
           </label>
           <label>
             <span className="label">EMIs left</span>

@@ -1,7 +1,7 @@
 import { ArrowDownUp } from 'lucide-react';
 import type { AppState } from '../types';
 import { getPriorityPayments } from '../utils/calculations';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatDate, parseDateInput } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
 
 export function PriorityPaymentEngine({ state }: { state: AppState }) {
@@ -22,7 +22,7 @@ export function PriorityPaymentEngine({ state }: { state: AppState }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold text-slate-950 dark:text-white">{index + 1}. {payment.name}</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Due {payment.dueDay} July • {formatCurrency(payment.amount)}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Due {formatDate(parseDateInput(payment.dueDate.slice(0, 10)))} • {formatCurrency(payment.amount)}</p>
               </div>
               {payment.closesLoan ? <StatusBadge label="Critical" /> : <StatusBadge label="High" />}
             </div>

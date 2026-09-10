@@ -1,5 +1,5 @@
 import type { AppState, Loan, MonthProjection, PaymentItem, Priority, PriorityPayment } from '../types';
-import { formatMonth, getJuly2026Date } from './format';
+import { formatMonth, getLoanDueDate, parseDateInput, toDateInputValue } from './format';
 
 const paidStatuses = new Set(['Paid']);
 
@@ -17,7 +17,10 @@ export const getLoanRemainingPayable = (loan: Loan) => loan.emi * loan.emisLeft;
 export const getTotalRemainingPayable = (loans: Loan[]) =>
   getActiveLoans(loans).reduce((sum, loan) => sum + getLoanRemainingPayable(loan), 0);
 
-export const getJulyObligation = (state: AppState) =>
+export const getCurrentSalary = (state: AppState) =>
+  state.regularSalary || state.julySalary;
+
+export const getCurrentObligation = (state: AppState) =>
   getTotalMonthlyEmi(state.loans) + state.rent + state.friendsDebt + state.creditCard.minimumDue;
 
 export const getDebtPressure = (gap: number): Priority => {
@@ -34,6 +37,7 @@ export const getPaymentGroups = (state: AppState) => {
     name: loan.name,
     amount: loan.emi,
     dueDay: loan.dueDay,
+    dueDate: toDateInputValue(getLoanDueDate(loan.dueDay, loan.dueDate)),
     status: loan.status,
     paid: state.paidLoanIds.includes(loan.id) || loan.status === 'Paid',
   }));
@@ -44,49 +48,51 @@ export const getPaymentGroups = (state: AppState) => {
     name: 'HDFC Credit Card minimum due',
     amount: state.creditCard.minimumDue + state.creditCard.extraPayment,
     dueDay: state.creditCard.dueDay,
+    dueDate: toDateInputValue(getLoanDueDate(state.creditCard.dueDay, state.creditCard.dueDate)),
     status: state.creditCard.paid ? 'Paid' : 'Pending',
     paid: state.creditCard.paid,
   };
 
-  const groups = [...loanPayments, cardPayment].reduce<Record<number, PaymentItem[]>>(
+  const groups = [...loanPayments, cardPayment].reduce<Record<string, PaymentItem[]>>(
     (acc, payment) => {
-      acc[payment.dueDay] = [...(acc[payment.dueDay] ?? []), payment];
+      acc[payment.dueDate] = [...(acc[payment.dueDate] ?? []), payment];
       return acc;
     },
     {},
   );
 
   return Object.entries(groups)
-    .map(([day, payments]) => ({
-      day: Number(day),
-      date: getJuly2026Date(Number(day)),
+    .map(([dueDate, payments]) => ({
+      day: parseDateInput(dueDate.slice(0, 10)).getDate(),
+      date: parseDateInput(dueDate.slice(0, 10)),
       payments,
       total: payments.reduce((sum, payment) => sum + payment.amount, 0),
     }))
-    .sort((a, b) => a.day - b.day);
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 };
 
-export const getDueState = (day: number, today = new Date()) => {
-  const dueDate = getJuly2026Date(day);
+export const getDueState = (dueDate: string | Date, today = new Date()) => {
+  const date = typeof dueDate === 'string' ? parseDateInput(dueDate.slice(0, 10)) : dueDate;
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const diffDays = Math.ceil((dueDate.getTime() - start.getTime()) / 86_400_000);
+  const diffDays = Math.ceil((date.getTime() - start.getTime()) / 86_400_000);
 
   if (diffDays < 0) return 'overdue';
   if (diffDays <= 3) return 'soon';
   return 'later';
 };
 
-export const getDaysUntilJulyDue = (day: number, today = new Date()) => {
-  const dueDate = getJuly2026Date(day);
+export const getDaysUntilDueDate = (dueDate: string | Date, today = new Date()) => {
+  const date = typeof dueDate === 'string' ? parseDateInput(dueDate.slice(0, 10)) : dueDate;
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.ceil((dueDate.getTime() - start.getTime()) / 86_400_000);
+  return Math.ceil((date.getTime() - start.getTime()) / 86_400_000);
 };
 
 export const getPriorityPayments = (state: AppState, today = new Date()): PriorityPayment[] =>
   getActiveLoans(state.loans)
     .filter((loan) => !state.paidLoanIds.includes(loan.id))
     .map((loan) => {
-      const daysUntilDue = getDaysUntilJulyDue(loan.dueDay, today);
+      const dueDate = getLoanDueDate(loan.dueDay, loan.dueDate, today);
+      const daysUntilDue = getDaysUntilDueDate(dueDate, today);
       const reasons: string[] = [];
       let score = 0;
 
@@ -130,6 +136,7 @@ export const getPriorityPayments = (state: AppState, today = new Date()): Priori
         name: loan.name,
         amount: loan.emi,
         dueDay: loan.dueDay,
+        dueDate: toDateInputValue(dueDate),
         score,
         reasons: reasons.length ? reasons : ['Lower immediate risk'],
         closesLoan: loan.emisLeft === 1,
@@ -140,7 +147,7 @@ export const getPriorityPayments = (state: AppState, today = new Date()): Priori
 export const getSurvivalSummary = (state: AppState, today = new Date()) => {
   const priorityPayments = getPriorityPayments(state, today);
   const mustPayThisWeek = priorityPayments
-    .filter((payment) => getDaysUntilJulyDue(payment.dueDay, today) <= 7)
+    .filter((payment) => getDaysUntilDueDate(payment.dueDate, today) <= 7)
     .reduce((sum, payment) => sum + payment.amount, 0);
   const requiredBuffer =
     state.survivalPlan.foodBuffer +
@@ -184,10 +191,15 @@ export const getRecoveryProjection = (state: AppState, months = 12): MonthProjec
   const loanBalances = state.loans.map((loan) => ({ ...loan }));
   let cardBalance = state.creditCard.outstanding;
   let friendsBalance = state.friendsDebt;
+  const [startYear, startMonth] = state.projectionStartMonth.split('-').map(Number);
 
   return Array.from({ length: months }, (_, index) => {
-    const date = new Date(2026, 6 + index, 1);
-    const salary = index === 0 ? state.julySalary : state.regularSalary;
+    const date = new Date(startYear, startMonth - 1 + index, 1);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const extraIncome = state.oneTimeIncomes
+      .filter((income) => income.month === monthKey)
+      .reduce((sum, income) => sum + income.amount, 0);
+    const salary = state.regularSalary + extraIncome;
     const activeLoans = loanBalances
       .filter((loan) => loan.emisLeft > 0 && loan.status !== 'Paid')
       .sort((a, b) => a.emisLeft - b.emisLeft || b.emi - a.emi);
@@ -197,8 +209,8 @@ export const getRecoveryProjection = (state: AppState, months = 12): MonthProjec
     const cashAfterEssentials = salary - state.rent - loanEmi - cardBasePayment;
     const friendsPayment = cashAfterEssentials > 0 ? Math.min(friendsBalance, cashAfterEssentials) : 0;
     const cashAfterFriends = cashAfterEssentials - friendsPayment;
-    const cardExtraAfterJuly = index > 0 && cashAfterFriends > 0 ? Math.min(cardBalance, cashAfterFriends) : 0;
-    const cardPayment = Math.min(cardBalance, cardBasePayment + cardExtraAfterJuly);
+    const cardExtraAfterStartMonth = index > 0 && cashAfterFriends > 0 ? Math.min(cardBalance, cashAfterFriends) : 0;
+    const cardPayment = Math.min(cardBalance, cardBasePayment + cardExtraAfterStartMonth);
 
     const completedLoans: string[] = [];
     activeLoans.forEach((loan) => {
@@ -234,7 +246,7 @@ export const getInsights = (state: AppState) => {
   const burdenAfterShortLoans = getTotalMonthlyEmi(
     activeLoans.filter((loan) => loan.emisLeft > 2),
   );
-  const julyGap = state.julySalary - getJulyObligation(state);
+  const currentGap = getCurrentSalary(state) - getCurrentObligation(state);
 
   return [
     {
@@ -247,9 +259,9 @@ export const getInsights = (state: AppState) => {
     {
       title: 'High priority this month',
       tone: 'red' as const,
-      body: julyGap < 0
-        ? `July has a shortfall. Prioritize minimum dues and loans due before 10 July.`
-        : 'July obligations fit within salary, but cash buffer is still tight.',
+      body: currentGap < 0
+        ? `This month has a shortfall. Prioritize minimum dues and nearest loan dates first.`
+        : 'This month fits within salary, but cash buffer is still tight.',
     },
     {
       title: 'Monthly burden after short loans finish',

@@ -6,7 +6,7 @@ export function RecoveryPlanner({ projection }: { projection: MonthProjection[] 
     <section className="panel overflow-hidden">
       <div className="border-b border-slate-200 p-4 dark:border-slate-800">
         <h2 className="text-lg font-bold text-slate-950 dark:text-white">Recovery Planner</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Projection from July 2026 with short-tenure loans reducing first.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Projection from the current month with short-tenure loans reducing first.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[850px] text-left text-sm">

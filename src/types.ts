@@ -7,6 +7,7 @@ export interface Loan {
   name: string;
   emi: number;
   dueDay: number;
+  dueDate?: string;
   emisLeft: number;
   priority: Priority;
   status: LoanStatus;
@@ -18,8 +19,16 @@ export interface CreditCardState {
   outstanding: number;
   minimumDue: number;
   dueDay: number;
+  dueDate?: string;
   extraPayment: number;
   paid: boolean;
+}
+
+export interface OneTimeIncome {
+  id: string;
+  month: string;
+  amount: number;
+  notes: string;
 }
 
 export interface AppState {
@@ -27,8 +36,12 @@ export interface AppState {
   creditCard: CreditCardState;
   friendsDebt: number;
   rent: number;
+  rentDueDay: number;
   julySalary: number;
   regularSalary: number;
+  salaryDateDay: number;
+  projectionStartMonth: string;
+  oneTimeIncomes: OneTimeIncome[];
   paidLoanIds: string[];
   darkMode: boolean;
   survivalPlan: SurvivalPlan;
@@ -58,6 +71,7 @@ export interface PaymentItem {
   name: string;
   amount: number;
   dueDay: number;
+  dueDate: string;
   status: LoanStatus;
   paid: boolean;
 }
@@ -104,6 +118,7 @@ export interface PriorityPayment {
   name: string;
   amount: number;
   dueDay: number;
+  dueDate: string;
   score: number;
   reasons: string[];
   closesLoan: boolean;

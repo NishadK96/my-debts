@@ -20,8 +20,9 @@ import { useSupabaseAppState } from './hooks/useSupabaseAppState';
 import type { AppState, Loan, LoanStatus } from './types';
 import {
   getDebtPressure,
+  getCurrentObligation,
+  getCurrentSalary,
   getInsights,
-  getJulyObligation,
   getRecoveryProjection,
   getTotalMonthlyEmi,
   getTotalRemainingEmis,
@@ -39,13 +40,14 @@ export function App() {
     const monthlyEmi = getTotalMonthlyEmi(state.loans);
     const remainingEmis = getTotalRemainingEmis(state.loans);
     const remainingPayable = getTotalRemainingPayable(state.loans);
-    const julyObligation = getJulyObligation(state);
-    const gap = state.julySalary - julyObligation;
+    const currentSalary = getCurrentSalary(state);
+    const currentObligation = getCurrentObligation(state);
+    const gap = currentSalary - currentObligation;
     const pressure = getDebtPressure(gap);
     const projection = getRecoveryProjection(state);
     const insights = getInsights(state);
 
-    return { monthlyEmi, remainingEmis, remainingPayable, julyObligation, gap, pressure, projection, insights };
+    return { monthlyEmi, remainingEmis, remainingPayable, currentSalary, currentObligation, gap, pressure, projection, insights };
   }, [state]);
 
   const updateLoan = (loan: Loan) => {
@@ -104,7 +106,7 @@ export function App() {
               <p className="label">Personal finance control room</p>
               <h1 className="mt-1 text-2xl font-bold tracking-normal text-slate-950 dark:text-white sm:text-3xl">Debt Recovery Dashboard</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                Track EMIs, July pressure, HDFC card balance, friends debt, rent, and recovery progress from July 2026.
+                Track EMIs, due dates, HDFC card balance, rent, and recovery progress from your current debt position.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -115,7 +117,7 @@ export function App() {
                 {state.darkMode ? <Sun size={16} /> : <Moon size={16} />} {state.darkMode ? 'Light' : 'Dark'}
               </button>
               <button onClick={resetSampleData} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
-                <RefreshCcw size={16} /> Reset sample data
+                <RefreshCcw size={16} /> Load latest debt status
               </button>
               <button onClick={() => void signOut()} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
                 <LogOut size={16} /> Sign out
@@ -153,9 +155,9 @@ export function App() {
             <>
               <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <DashboardCard title="Total Monthly EMI" value={formatCurrency(totals.monthlyEmi)} subtitle={`${totals.remainingEmis} EMIs remaining across active loans`} icon={<WalletCards size={20} />} tone="blue" />
-                <DashboardCard title="July Salary" value={formatCurrency(state.julySalary)} subtitle={`August onward salary: ${formatCurrency(state.regularSalary)}`} icon={<Landmark size={20} />} tone="green" />
-                <DashboardCard title="Total Monthly Obligation" value={formatCurrency(totals.julyObligation)} subtitle={`Includes rent, friends debt, loans, and card minimum`} icon={<TrendingDown size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
-                <DashboardCard title="Salary Gap" value={formatCurrency(totals.gap)} subtitle="July salary minus total obligation" icon={<AlertTriangle size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
+                <DashboardCard title="Monthly Salary" value={formatCurrency(totals.currentSalary)} subtitle={`Salary date: ${state.salaryDateDay}th • October extra: ${formatCurrency(state.oneTimeIncomes.reduce((sum, income) => sum + income.amount, 0))}`} icon={<Landmark size={20} />} tone="green" />
+                <DashboardCard title="Total Monthly Obligation" value={formatCurrency(totals.currentObligation)} subtitle={`Includes rent, active loans, card due, and friends debt`} icon={<TrendingDown size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
+                <DashboardCard title="Salary Gap" value={formatCurrency(totals.gap)} subtitle="Monthly salary minus current obligation" icon={<AlertTriangle size={20} />} tone={totals.gap < 0 ? 'red' : 'green'} />
               </section>
 
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -166,7 +168,7 @@ export function App() {
                     <span className="text-sm text-slate-500 dark:text-slate-400">{totals.pressure === 'Critical' ? 'Immediate action needed' : totals.pressure === 'High' ? 'Shortfall risk' : 'Track closely'}</span>
                   </div>
                 </div>
-                <DashboardCard title="Rent" value={formatCurrency(state.rent)} subtitle="Monthly fixed cost" tone="slate" />
+                <DashboardCard title="Rent" value={formatCurrency(state.rent)} subtitle={`Due by ${state.rentDueDay}th every month`} tone="slate" />
                 <DashboardCard title="Friends Debt" value={formatCurrency(state.friendsDebt)} subtitle="Planned repayment in projection" tone="orange" />
                 <DashboardCard title="Remaining Payable" value={formatCurrency(totals.remainingPayable)} subtitle="Active loans only" tone="blue" />
               </section>

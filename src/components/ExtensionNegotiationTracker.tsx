@@ -1,5 +1,5 @@
 import type { AppState, NegotiationRecord } from '../types';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatDate, getLoanDueDate } from '../utils/format';
 
 interface ExtensionNegotiationTrackerProps {
   state: AppState;
@@ -51,7 +51,7 @@ export function ExtensionNegotiationTracker({ state, onChange }: ExtensionNegoti
               const record = getRecord(loan.id);
               return (
                 <tr key={loan.id}>
-                  <td className="px-4 py-3 font-semibold text-slate-950 dark:text-white">{loan.name}<span className="block text-xs font-normal text-slate-500">{formatCurrency(loan.emi)} due {loan.dueDay} July</span></td>
+                  <td className="px-4 py-3 font-semibold text-slate-950 dark:text-white">{loan.name}<span className="block text-xs font-normal text-slate-500">{formatCurrency(loan.emi)} due {formatDate(getLoanDueDate(loan.dueDay, loan.dueDate))}</span></td>
                   <td className="px-4 py-3"><input className="field min-w-40" value={record.contact} onChange={(event) => updateRecord({ ...record, contact: event.target.value })} /></td>
                   <td className="px-4 py-3"><input type="checkbox" checked={record.requested} onChange={(event) => updateRecord({ ...record, requested: event.target.checked })} /></td>
                   <td className="px-4 py-3"><input type="checkbox" checked={record.approved} onChange={(event) => updateRecord({ ...record, approved: event.target.checked })} /></td>

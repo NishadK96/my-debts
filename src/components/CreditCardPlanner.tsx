@@ -1,6 +1,6 @@
 import { CreditCard } from 'lucide-react';
 import type { CreditCardState } from '../types';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatDate, getLoanDueDate } from '../utils/format';
 
 interface CreditCardPlannerProps {
   card: CreditCardState;
@@ -17,7 +17,7 @@ export function CreditCardPlanner({ card, onChange }: CreditCardPlannerProps) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">HDFC Credit Card Planner</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Due 10 July, limit {formatCurrency(card.limit)}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Due {formatDate(getLoanDueDate(card.dueDay, card.dueDate))}, limit {formatCurrency(card.limit)}</p>
         </div>
         <CreditCard className="text-blue-600" size={22} />
       </div>

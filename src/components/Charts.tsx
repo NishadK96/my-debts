@@ -1,6 +1,6 @@
 import type { Loan, MonthProjection } from '../types';
 import { getLoanRemainingPayable, getPaymentGroups } from '../utils/calculations';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatDate } from '../utils/format';
 import type { AppState } from '../types';
 
 interface BarChartProps {
@@ -43,7 +43,7 @@ export function DashboardCharts({ loans, projection, state }: { loans: Loan[]; p
     .sort((a, b) => b.value - a.value);
 
   const paymentRows = getPaymentGroups(state).map((group) => ({
-    label: `${group.day} July`,
+    label: formatDate(group.date),
     value: group.total,
   }));
 

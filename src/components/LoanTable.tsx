@@ -1,6 +1,6 @@
 import { Edit2, Plus, Trash2 } from 'lucide-react';
 import type { Loan, LoanStatus } from '../types';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatDate, getLoanDueDate } from '../utils/format';
 import { getLoanRemainingPayable } from '../utils/calculations';
 import { StatusBadge } from './StatusBadge';
 
@@ -46,7 +46,7 @@ export function LoanTable({ loans, onAdd, onEdit, onDelete, onStatusChange }: Lo
               <tr key={loan.id} className="text-slate-700 dark:text-slate-200">
                 <td className="px-4 py-3 font-semibold text-slate-950 dark:text-white">{loan.name}</td>
                 <td className="px-4 py-3">{formatCurrency(loan.emi)}</td>
-                <td className="px-4 py-3">{loan.dueDay} July</td>
+                <td className="px-4 py-3">{formatDate(getLoanDueDate(loan.dueDay, loan.dueDate))}</td>
                 <td className="px-4 py-3">{loan.emisLeft}</td>
                 <td className="px-4 py-3">{formatCurrency(getLoanRemainingPayable(loan))}</td>
                 <td className="px-4 py-3"><StatusBadge label={loan.priority} /></td>
